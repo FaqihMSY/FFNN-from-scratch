@@ -22,7 +22,7 @@ class Tanh:
     def f(x):
         e_pos = np.exp(x)
         e_neg = np.exp(-x)
-        return (e_pos - e neg) / (e_pos + e_neg)
+        return (e_pos - e_neg) / (e_pos + e_neg)
     def df_dx(x):
         e_pos = np.exp(x)
         e_neg = np.exp(-x)
