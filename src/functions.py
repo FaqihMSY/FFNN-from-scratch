@@ -43,9 +43,8 @@ class Tanh :
         e_neg = np.exp(-x)
         return (e_pos - e_neg) / (e_pos + e_neg)
     def df_dx(x : np.ndarray) -> np.ndarray :
-        e_pos = np.exp(x)
-        e_neg = np.exp(-x)
-        return np.pow(2 / (e_pos - e_neg) , 2)
+        t = Tanh.f(x)
+        return 1 - t**2
 
 class Softmax:
     def f(x : np.ndarray) -> np.ndarray :
@@ -56,3 +55,21 @@ class Softmax:
         sm = Softmax.f(x)
         partial = sm * (np.eye(len(x)) - np.vstack(sm))
         return partial
+
+class MSE:
+    def L(t, o):
+        return 0.5 * np.power((t-o), 2)
+
+    def dL_do(t, o):
+        return o - t
+
+class BCE:
+    def L(t, o):
+        eps = 1e-12
+        o = np.clip(o, eps, 1 - eps)
+        return -(t * np.log(o) + (1 - t) * np.log(1 - o))
+
+    def dL_do(t, o):
+        eps = 1e-12
+        o = np.clip(o, eps, 1 - eps)
+        return (o - t) / (o * (1 - o))

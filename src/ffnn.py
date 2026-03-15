@@ -20,6 +20,7 @@
 # ALGORITMA
 import numpy as np
 from unit import Unit
+from functions import *
 
 class FFNN :
     # DESKRIPSI LOKAL
@@ -32,7 +33,9 @@ class FFNN :
 
     def __init__(self: "FFNN",
                  dimension: list[int],
-                 activation_functions: list):
+                 activation_functions: list,
+                 loss_function: any = MSE,
+                 learning_rate = 0.1):
         """
         initializes a feed forward neural network.
         dimension: numbers of unit in each layer, starting from the input layer
@@ -43,8 +46,11 @@ class FFNN :
         self.net = []
         self.out = []
         self.activation_functions = activation_functions
+        self.loss_function = loss_function
+        self.delta = []
+        self.learning_rate = learning_rate
 
-    def count_net_per_layer(self, last_layer : np.ndarray | int) :
+    def count_net_per_layer(self, last_layer : int) :
         # DESKRIPSI LOKAL
         # Count net value for each unit (neuron) in current layer.
 
@@ -56,17 +62,13 @@ class FFNN :
         # i : int (index)
 
         # ALGORITMA
-        if (isinstance(last_layer , np.ndarray)) :
-            last = last_layer
-            current_layer = 0
-        else:
-            last = self.out[last_layer]
-            current_layer = last_layer + 1
+        last = self.out[last_layer]
+        current_layer = last_layer + 1
         result = np.hstack(
             [np.ones( (len(last), 1) ),
             last]
         )
-        result = result @ self.weights[current_layer].T
+        result = result @ self.weights[current_layer-1].T
         if len(self.net) >= current_layer + 1:
             self.net[current_layer] = result
         else:
@@ -87,7 +89,7 @@ class FFNN :
         # i : int (index)
 
         # ALGORITMA
-        result = self.activation_functions[layer].f(self.net[layer])
+        result = self.activation_functions[layer-1].f(self.net[layer])
         if len(self.out) >= layer + 1:
             self.out[layer] = result
         else:
@@ -108,11 +110,91 @@ class FFNN :
         # i : int (index)
 
         # ALGORITMA
-        self.count_net_per_layer(input_layer).activate_layer(0)
-        
-        for i in range(1, len(self.weights)):
+        self.out = []
+        self.net = []
+        self.out.append(input_layer)
+        self.net.append(input_layer)
+        for i in range(1, len(self.weights)+1):
             self.count_net_per_layer(i-1).activate_layer(i)
         return self
 
     def result(self):
         return self.out[-1]
+    
+    def compute_delta_output_layer(self, t):
+        o = self.out[-1][0]
+        # print(f'{t=}')
+        # print(f'{o=}')
+        dL_do = self.loss_function.dL_do(t, o)
+        # print(f'{dL_do=}')
+        dL_dnet = self.activation_functions[-1].df_dx(o) * dL_do
+        # print(f'{dL_dnet=}')
+        self.delta.insert(0, dL_dnet)
+
+    def compute_delta_hidden_layer(self, layer):
+        o = self.out[layer][0]
+        delta_next = self.delta[0]
+        w_next = self.weights[layer][:, 1:]
+        # print(f'comhid_{layer=}')
+        # print(f'{o=}')
+        # print(f'{self.weights=}')
+        # print(f'{w_next=}')
+        # print(f'{delta_next=}')
+
+
+        dnet = w_next.T @ delta_next
+        # print(f'{dnet=}')
+        do_dnet = self.activation_functions[layer-1].df_dx(o)  
+        # print(f'{do_dnet=}')
+        delta = do_dnet[:, np.newaxis] * dnet
+        # print(f'{delta=}')
+
+        self.delta.insert(0, delta)
+
+    def update_weight(self, layer):
+        delta = self.delta[layer-1]
+        # print(f'{layer=}')
+        # print(f'{delta=}')
+        # print(f'{self.out=}')
+        a_prev = np.hstack([[1], self.out[layer-1][0]])
+        # print(f'{a_prev=}')
+
+        grad = np.outer(delta, a_prev)
+        # print(f'{grad=}')
+        # print(f'{self.weights[layer-1]=}')
+
+        self.weights[layer-1] -= self.learning_rate * grad
+        # print(f'{self.weights[layer-1]=}')
+
+    def train(self, X, y, epochs):
+        n_samples = X.shape[0]
+
+        for epoch in range(epochs):
+            for i in range(n_samples):
+
+                x = X[i:i+1]
+                t = y[i:i+1]
+
+                self.delta = []
+
+                self.predict(x)
+
+                self.compute_delta_output_layer(t)
+
+                last_layer = len(self.weights)
+
+                for layer in reversed(range(1, last_layer)):
+                    self.compute_delta_hidden_layer(layer)
+                # print(f'{self.delta=}')
+                for layer in range(1, last_layer+1):
+                    self.update_weight(layer)
+
+if __name__ == '__main__':
+    a = FFNN([3,15, 15,1], [Tanh, Tanh, Sigmoid], BCE, 0.001)
+    a.train(np.array([[1,2,3],[-4,-5,-6],[7,8,9]]), np.array([[1],[0],[1]]), 1000)
+    print(a.weights)
+    a.predict([[1,2,3],[-4,-5,-6],[7,8,9]])
+    print(a.result())
+    for net, o in zip(a.net, a.out):
+        print(net)
+        print(o)
