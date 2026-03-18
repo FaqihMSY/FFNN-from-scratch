@@ -70,7 +70,6 @@ class FFNN :
                 W = np.random.uniform(lower, upper, size=shape)
 
             elif weight_initialization == "random_normal":
-                std = np.sqrt(var)
                 W = np.random.normal(mean, std, size=shape)
 
             elif weight_initialization == "xavier":
