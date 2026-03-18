@@ -38,7 +38,7 @@ class FFNN :
                  learning_rate = 0.1,
                  weight_initialization = 'random_uniform',
                  seed=42, lower=0, upper=1,
-                 mean=0, std=1,
+                 mean=0, std=1, l1_lambda = None, l2_lambda = None
                  ):
         """
         initializes a feed forward neural network.
@@ -93,6 +93,8 @@ class FFNN :
         self.loss_function = loss_function
         self.delta = []
         self.learning_rate = learning_rate
+        self.l1_lambda = l1_lambda
+        self.l2_lambda = l2_lambda
 
     def count_net_per_layer(self, last_layer : int) :
         # DESKRIPSI LOKAL
@@ -206,9 +208,26 @@ class FFNN :
         grad = np.outer(delta, a_prev)
         # print(f'{grad=}')
         # print(f'{self.weights[layer-1]=}')
-
         self.gradients[layer-1] = grad
-        self.weights[layer-1] -= self.learning_rate * grad
+
+        if self.l1_lambda is None and self.l2_lambda is None:
+            self.weights[layer-1] -= self.learning_rate * grad
+            return
+
+        if self.l1_lambda is None:
+            self.l1_lambda = 0
+        if self.l2_lambda is None:
+            self.l2_lambda = 0
+        l1_term = self.l1_lambda * np.sign(self.weights[layer-1])
+        l2_term = 2 * self.l2_lambda * self.weights[layer-1]
+
+        l1_term[:, 0] = 0
+        l2_term[:, 0] = 0
+        self.weights[layer-1] -= self.learning_rate * (
+            grad + l1_term + l2_term
+
+        )
+
         # print(f'{self.weights[layer-1]=}')
 
     def _plot_histogram(self, data_source, layeridx: list[int], title_prefix: str):
@@ -278,7 +297,7 @@ class FFNN :
                 output_file.flush()
 
 if __name__ == '__main__':
-    a = FFNN([3,1,1,1], [Sigmoid, Sigmoid, Sigmoid, Sigmoid, ], BCE, 0.1)
+    a = FFNN([3,1,1,1], [Tanh, Sigmoid, Sigmoid, Sigmoid, ], BCE, 0.1, l1_lambda=0., l2_lambda=0.01)
     a.train(np.array([[1,2,3],[-4,-5,-6],[7,8,9]]), np.array([[1],[0],[1]]), 100, verbose=True,
             validation_X=[[1,2,3],[-4,-5,-6],[7,8,9]], validation_y=[[1],[0],[1]])
     print(a.weights)
