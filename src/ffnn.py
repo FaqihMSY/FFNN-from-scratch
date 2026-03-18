@@ -286,10 +286,10 @@ class FFNN :
                 # print(f'{self.delta=}')
                 for layer in range(1, last_layer+1):
                     self.update_weight(layer)
-            self.training_loss.append(loss)
             if verbose:
                 pbar.set_postfix(loss=f"{loss:.6f}")
                 self.count_validation_loss(validation_X, validation_y)
+                self.training_loss.append(loss)
 
             if output_file is not None:
                 output_file.write(f"{epoch+1},{loss[0][0]:.6f}\n")
