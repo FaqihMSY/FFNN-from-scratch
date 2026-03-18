@@ -55,6 +55,7 @@ class FFNN :
             np.random.seed(seed)
 
         self.weights = []
+        self.dimension = dimension
 
         for i in range(len(dimension) - 1):
             fan_in = dimension[i]
@@ -228,13 +229,23 @@ class FFNN :
     def plot_g(self, layeridx: list[int]):
         self._plot_histogram(self.gradients, layeridx, "Gradient Dist")
 
-    def train(self, X, y, epochs, verbose=False, output_file=None):
+    def count_validation_loss(self, validation_X, validation_y):
+        copy = FFNN(self.dimension, self.activation_functions, self.loss_function,
+                    weight_initialization='zero')
+        copy.weights = self.weights
+        copy.predict(validation_X)
+        result = copy.result()
+        loss = np.sum(copy.loss_function.L(validation_y, result))
+        self.validation_loss.append(loss)
+
+    def train(self, X, y, epochs, verbose=False, output_file=None, validation_X= [], validation_y= []):
         n_samples = X.shape[0]
         print_freq = max(1, epochs // 100) 
         from tqdm import tqdm
 
         pbar = tqdm(range(epochs), desc="Training")
-        loss_hist = []
+        self.training_loss = []
+        self.validation_loss = []
 
         for epoch in pbar:
             loss = 0
@@ -246,7 +257,7 @@ class FFNN :
                 self.delta = []
 
                 self.predict(x)
-                loss += self.loss_function.L(t, self.out[-1][0])
+                loss += np.sum(self.loss_function.L(t, self.out[-1][0]))
 
                 self.compute_delta_output_layer(t)
 
@@ -257,9 +268,10 @@ class FFNN :
                 # print(f'{self.delta=}')
                 for layer in range(1, last_layer+1):
                     self.update_weight(layer)
-            loss_hist.append(loss)
+            self.training_loss.append(loss)
             if verbose:
-                pbar.set_postfix(loss=f"{loss[0][0]:.6f}")
+                pbar.set_postfix(loss=f"{loss:.6f}")
+                self.count_validation_loss(validation_X, validation_y)
 
             if output_file is not None:
                 output_file.write(f"{epoch+1},{loss[0][0]:.6f}\n")
@@ -267,7 +279,8 @@ class FFNN :
 
 if __name__ == '__main__':
     a = FFNN([3,1,1,1], [Sigmoid, Sigmoid, Sigmoid, Sigmoid, ], BCE, 0.1)
-    a.train(np.array([[1,2,3],[-4,-5,-6],[7,8,9]]), np.array([[1],[0],[1]]), 5432, verbose=True)
+    a.train(np.array([[1,2,3],[-4,-5,-6],[7,8,9]]), np.array([[1],[0],[1]]), 100, verbose=True,
+            validation_X=[[1,2,3],[-4,-5,-6],[7,8,9]], validation_y=[[1],[0],[1]])
     print(a.weights)
     a.predict([[1,2,3],[-4,-5,-6],[7,8,9]])
     print(a.result())
@@ -275,3 +288,5 @@ if __name__ == '__main__':
     for net, o in zip(a.net, a.out):
         print(net)
         print(o)
+    print(a.validation_loss)
+    print(a.training_loss)
