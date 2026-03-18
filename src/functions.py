@@ -89,10 +89,7 @@ class BCE:
             -np.log(o),
             -np.log(1 - o)
         )
-        if result >= 0:
-            return result
-        else:
-            return 0
+        return result
 
     def dL_do(t, o):
         eps = 1e-6
