@@ -58,7 +58,7 @@ class Tanh :
     def f(x : np.ndarray) -> np.ndarray :
         return np.tanh(x)
     def df_dx(x : np.ndarray) -> np.ndarray :
-        t = np.tanh(X)
+        t = np.tanh(x)
         return 1 - t**2
 
 
