@@ -228,10 +228,16 @@ class FFNN :
     def plot_g(self, layeridx: list[int]):
         self._plot_histogram(self.gradients, layeridx, "Gradient Dist")
 
-    def train(self, X, y, epochs):
+    def train(self, X, y, epochs, verbose=False, output_file=None):
         n_samples = X.shape[0]
+        print_freq = max(1, epochs // 100) 
+        from tqdm import tqdm
 
-        for epoch in range(epochs):
+        pbar = tqdm(range(epochs), desc="Training")
+        loss_hist = []
+
+        for epoch in pbar:
+            loss = 0
             for i in range(n_samples):
 
                 x = X[i:i+1]
@@ -240,6 +246,7 @@ class FFNN :
                 self.delta = []
 
                 self.predict(x)
+                loss += self.loss_function.L(t, self.out[-1][0])
 
                 self.compute_delta_output_layer(t)
 
@@ -250,13 +257,21 @@ class FFNN :
                 # print(f'{self.delta=}')
                 for layer in range(1, last_layer+1):
                     self.update_weight(layer)
+            loss_hist.append(loss)
+            if verbose:
+                pbar.set_postfix(loss=f"{loss[0][0]:.6f}")
+
+            if output_file is not None:
+                output_file.write(f"{epoch+1},{loss[0][0]:.6f}\n")
+                output_file.flush()
 
 if __name__ == '__main__':
-    a = FFNN([3,15, 15,1], [Tanh, Tanh, Sigmoid], BCE, 0.001)
-    a.train(np.array([[1,2,3],[-4,-5,-6],[7,8,9]]), np.array([[1],[0],[1]]), 1000)
+    a = FFNN([3,1,1,1], [Sigmoid, Sigmoid, Sigmoid, Sigmoid, ], BCE, 0.1)
+    a.train(np.array([[1,2,3],[-4,-5,-6],[7,8,9]]), np.array([[1],[0],[1]]), 5432, verbose=True)
     print(a.weights)
     a.predict([[1,2,3],[-4,-5,-6],[7,8,9]])
     print(a.result())
+    print(MSE.L(np.array([[1],[0],[1]]), a.result()))
     for net, o in zip(a.net, a.out):
         print(net)
         print(o)

@@ -31,20 +31,36 @@ class ReLU :
         return np.where(x > 0 , 1 , 0)
 
 class Sigmoid:
-    def f(x : np.ndarray) -> np.ndarray :
+    def _positive_sigmoid(x):
         return 1 / (1 + np.exp(-x))
+
+
+    def _negative_sigmoid(x):
+        exp = np.exp(x)
+        return exp / (exp + 1)
+
+    def f(x : np.ndarray) -> np.ndarray :
+        # source:
+        # https://stackoverflow.com/questions/51976461/
+        positive = x >= 0
+        negative = ~positive
+
+        result = np.empty_like(x, dtype=np.float32)
+        result[positive] = Sigmoid._positive_sigmoid(x[positive])
+        result[negative] = Sigmoid._negative_sigmoid(x[negative])
+        return result
+
     def df_dx(x : np.ndarray) -> np.ndarray :
         sigm = Sigmoid.f(x)
         return sigm * (1 - sigm)
 
 class Tanh :
     def f(x : np.ndarray) -> np.ndarray :
-        e_pos = np.exp(x)
-        e_neg = np.exp(-x)
-        return (e_pos - e_neg) / (e_pos + e_neg)
+        return np.tanh(x)
     def df_dx(x : np.ndarray) -> np.ndarray :
-        t = Tanh.f(x)
+        t = np.tanh(X)
         return 1 - t**2
+
 
 class Softmax:
     def f(x : np.ndarray) -> np.ndarray :
@@ -65,22 +81,31 @@ class MSE:
 
 class BCE:
     def L(t, o):
-        eps = 1e-12
+        eps = 1e-6
         o = np.clip(o, eps, 1 - eps)
-        return -(t * np.log(o) + (1 - t) * np.log(1 - o))
+
+        result = np.where(
+            t == 1,
+            -np.log(o),
+            -np.log(1 - o)
+        )
+        if result >= 0:
+            return result
+        else:
+            return 0
 
     def dL_do(t, o):
-        eps = 1e-12
+        eps = 1e-6
         o = np.clip(o, eps, 1 - eps)
         return (o - t) / (o * (1 - o))
 
 class CCE: 
     def L(t, o):
-        eps = 1e-12
+        eps = 1e-9
         o = np.clip(o, eps, 1 - eps)
         return -np.sum(t * np.log(o), axis=-1)
 
     def dL_do(t, o):
-        eps = 1e-12
+        eps = 1e-9
         o = np.clip(o, eps, 1 - eps)
         return -t / o
