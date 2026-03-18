@@ -1,4 +1,4 @@
-# Program F03_Forward_Propagation
+# Program F03_FFNN
 
 # IDENTITAS
 # Data Kelompok  : K01 - G03 - Geprek ML
@@ -8,14 +8,14 @@
 # Institusi      : Institut Teknologi Bandung (ITB)
 # Mata Kuliah    : Pembelajaran Mesin (IF3270-24) Tahun 2026
 # Detail Tugas   : Tugas Besar 1
-# Hari & Tanggal : Minggu, 15 Maret 2026
-# Deskripsi      : Implementasi Forward Propagation FFNN (Feed Forward Neural Network)
+# Hari & Tanggal : Rabu, 18 Maret 2026
+# Deskripsi      : Implementasi FFNN (Feed Forward Neural Network)
 # PIC F03        : 13523021 - Muhammad Raihan Nazhim Oktana
 
 # KAMUS
-# np : Numpy (Library)
-# Unit : Class (Unit FFNN - Single Neuron)
-# ForwardPropagation : Class (Forward Propagation FFNN - Feed Forward Neural Network)
+# Numpy , Matplotlib : Library
+# Functions : Module
+# FFNN : Class (Feed Forward Neural Network)
 
 # ALGORITMA
 import numpy as np
@@ -24,10 +24,10 @@ import matplotlib.pyplot as plt
 
 class FFNN :
     # DESKRIPSI LOKAL
-    # Forward Propagation implementation in FFNN (Feed Forward Neural Network).
+    # FFNN (Feed Forward Neural Network) Implementation.
 
     # KAMUS LOKAL
-    # count_net_per_layer , activate_layer , forward_propagation : Function
+    # ...
     
     # ALGORITMA
 
@@ -100,11 +100,7 @@ class FFNN :
         # Count net value for each unit (neuron) in current layer.
 
         # KAMUS LOKAL
-        # last_layer : np.ndarray | int
-        # current_layer : list[Unit]
-        # last : np.ndarray
-        # len : Function
-        # i : int (index)
+        # ...
 
         # ALGORITMA
         last = self.out[last_layer]
@@ -121,17 +117,12 @@ class FFNN :
             self.net.append(result)
         return self
 
-    def activate_layer(self,
-                       layer : int) :
+    def activate_layer(self, layer : int) :
         # DESKRIPSI LOKAL
         # Activate current layer using given activation function.
 
         # KAMUS LOKAL
-        # layer : list[Unit]
-        # activation_function : Function (Linear , ReLU , Sigmoid , Tanh , Softmax)
-        # net , res : np.ndarray
-        # len : Function
-        # i : int (index)
+        # ...
 
         # ALGORITMA
         result = self.activation_functions[layer-1].f(self.net[layer])
@@ -147,12 +138,7 @@ class FFNN :
         # Forward Propagation process in FFNN (Feed Forward Neural Network).
 
         # KAMUS LOKAL
-        # input_layer : np.ndarray
-        # hidden_layers : list[list[Unit]]
-        # output_layer : list[Unit]
-        # activation_function_hidden_layers : list[any] (Activation Function)
-        # activation_function_output_layer : any (Activation Function)
-        # i : int (index)
+        # ...
 
         # ALGORITMA
         self.out = []
