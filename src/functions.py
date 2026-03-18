@@ -73,3 +73,14 @@ class BCE:
         eps = 1e-12
         o = np.clip(o, eps, 1 - eps)
         return (o - t) / (o * (1 - o))
+
+class CCE: 
+    def L(t, o):
+        eps = 1e-12
+        o = np.clip(o, eps, 1 - eps)
+        return -np.sum(t * np.log(o), axis=-1)
+
+    def dL_do(t, o):
+        eps = 1e-12
+        o = np.clip(o, eps, 1 - eps)
+        return -t / o
