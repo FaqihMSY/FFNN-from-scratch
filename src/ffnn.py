@@ -19,8 +19,7 @@
 
 # ALGORITMA
 import numpy as np
-from unit import Unit
-from functions import *
+from .functions import *
 
 class FFNN :
     # DESKRIPSI LOKAL
