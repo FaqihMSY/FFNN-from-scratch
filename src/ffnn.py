@@ -20,6 +20,7 @@
 # ALGORITMA
 import numpy as np
 from .functions import *
+import matplotlib.pyplot as plt
 
 class FFNN :
     # DESKRIPSI LOKAL
@@ -42,6 +43,7 @@ class FFNN :
         activation_functions: activation function to use for each layer
         """
         self.weights = [np.random.rand(dimension[i+1], dimension[i]+1) for i in range(0, len(dimension)-1)]
+        self.gradients = [np.zeros_like(w) for w in self.weights]
         self.net = []
         self.out = []
         self.activation_functions = activation_functions
@@ -162,8 +164,27 @@ class FFNN :
         # print(f'{grad=}')
         # print(f'{self.weights[layer-1]=}')
 
+        self.gradients[layer-1] = grad
         self.weights[layer-1] -= self.learning_rate * grad
         # print(f'{self.weights[layer-1]=}')
+
+    def _plot_histogram(self, data_source, layeridx: list[int], title_prefix: str):
+        for idx in layeridx:
+            if 0 <= idx < len(data_source):
+                data = data_source[idx].flatten()
+                plt.figure(figsize=(16, 9))
+                plt.hist(data, bins=30, color='blue', edgecolor='black')
+                plt.title(f"{title_prefix} - Layer {idx}")
+                plt.xlabel("Value")
+                plt.ylabel("Freq")
+                plt.grid(alpha=0.5)
+                plt.show()
+
+    def plot_w(self, layeridx: list[int]):
+        self._plot_histogram(self.weights, layeridx, "Weight Dist")
+
+    def plot_g(self, layeridx: list[int]):
+        self._plot_histogram(self.gradients, layeridx, "Gradient Dist")
 
     def train(self, X, y, epochs):
         n_samples = X.shape[0]
