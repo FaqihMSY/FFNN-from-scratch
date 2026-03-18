@@ -35,14 +35,55 @@ class FFNN :
                  dimension: list[int],
                  activation_functions: list,
                  loss_function: any = MSE,
-                 learning_rate = 0.1):
+                 learning_rate = 0.1,
+                 weight_initialization = 'random',
+                 seed=42, lower=0, upper=1,
+                 mean=0, std=1,
+                 ):
         """
         initializes a feed forward neural network.
-        dimension: numbers of unit in each layer, starting from the input layer
-                    up to the output layer.
-        activation_functions: activation function to use for each layer
+        dimension             : numbers of unit in each layer, starting from the input layer
+                                up to the output layer.
+
+        activation_functions  : activation function to use for each layer
+
+        loss_function         : loss function to use
+        weight_initialization : can be one of "zero", "random_uniform",
+                                "random_normal", "xavier", "he"
         """
-        self.weights = [np.random.rand(dimension[i+1], dimension[i]+1) for i in range(0, len(dimension)-1)]
+        if seed is not None:
+            np.random.seed(seed)
+
+        self.weights = []
+
+        for i in range(len(dimensions) - 1):
+            fan_in = dimensions[i]
+            fan_out = dimensions[i + 1]
+
+            shape = (fan_out, fan_in + 1)
+
+            if init_method == "zero":
+                W = np.zeros(shape)
+
+            elif init_method == "random_uniform":
+                W = np.random.uniform(lower, upper, size=shape)
+
+            elif init_method == "random_normal":
+                std = np.sqrt(var)
+                W = np.random.normal(mean, std, size=shape)
+
+            elif init_method == "xavier":
+                limit = np.sqrt(6 / (fan_in + fan_out))
+                W = np.random.uniform(-limit, limit, size=shape)
+
+            elif init_method == "he":
+                std = np.sqrt(2 / fan_in)
+                W = np.random.normal(0, std, size=shape)
+
+            else:
+                raise ValueError(f"Unknown init_method: {init_method}")
+
+            self.weights.append(W)
         self.gradients = [np.zeros_like(w) for w in self.weights]
         self.net = []
         self.out = []
