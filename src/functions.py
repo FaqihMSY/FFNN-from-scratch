@@ -22,7 +22,7 @@ class Linear :
     def f(x : np.ndarray) -> np.ndarray :
         return x
     def df_dx(x : np.ndarray) -> np.ndarray :
-        return 1
+        return np.ones_like(x)
 
 class ReLU :
     def f(x : np.ndarray) -> np.ndarray :
