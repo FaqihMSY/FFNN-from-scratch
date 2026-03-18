@@ -8,12 +8,14 @@
 # Institusi      : Institut Teknologi Bandung (ITB)
 # Mata Kuliah    : Pembelajaran Mesin (IF3270-24) Tahun 2026
 # Detail Tugas   : Tugas Besar 1
-# Hari & Tanggal : Minggu, 15 Maret 2026
+# Hari & Tanggal : Rabu, 18 Maret 2026
 # Deskripsi      : Implementasi Activation Functions FFNN (Feed Forward Neural Network)
 # PIC F02        : 13523044 - Muhammad Luqman Hakim
 
 # KAMUS
+# Numpy : Library
 # Linear , ReLU , Sigmoid , Tanh , Softmax : Class (Activation Functions)
+# MSE , BCE , CCE : Class (Loss Functions)
 
 # ALGORITMA
 import numpy as np
@@ -31,11 +33,11 @@ class ReLU :
         return np.where(x > 0 , 1 , 0)
 
 class Sigmoid:
-    def _positive_sigmoid(x):
+    def _positive_sigmoid(x : np.ndarray) -> np.ndarray :
         return 1 / (1 + np.exp(-x))
 
 
-    def _negative_sigmoid(x):
+    def _negative_sigmoid(x : np.ndarray) -> np.ndarray :
         exp = np.exp(x)
         return exp / (exp + 1)
 
@@ -61,7 +63,6 @@ class Tanh :
         t = np.tanh(x)
         return 1 - t**2
 
-
 class Softmax:
     def f(x : np.ndarray) -> np.ndarray :
         e = np.exp(x)
@@ -73,36 +74,36 @@ class Softmax:
         return partial
 
 class MSE:
-    def L(t, o):
+    def L(t : np.ndarray , o : np.ndarray) -> np.ndarray :
         return 0.5 * np.power((t-o), 2)
 
-    def dL_do(t, o):
+    def dL_do(t : np.ndarray, o : np.ndarray) -> np.ndarray :
         return o - t
 
-class BCE:
-    def L(t, o):
+class BCE :
+    def L(t : np.ndarray , o : np.ndarray) -> np.ndarray :
         eps = 1e-6
-        o = np.clip(o, eps, 1 - eps)
+        o = np.clip(o , eps , 1 - eps)
 
         result = np.where(
-            t == 1,
-            -np.log(o),
+            t == 1 , 
+            -np.log(o) , 
             -np.log(1 - o)
         )
         return result
 
-    def dL_do(t, o):
+    def dL_do(t : np.ndarray , o : np.ndarray) -> np.ndarray :
         eps = 1e-6
-        o = np.clip(o, eps, 1 - eps)
+        o = np.clip(o , eps , 1 - eps)
         return (o - t) / (o * (1 - o))
 
-class CCE: 
-    def L(t, o):
+class CCE : 
+    def L(t : np.ndarray , o : np.ndarray) -> np.ndarray :
         eps = 1e-9
-        o = np.clip(o, eps, 1 - eps)
-        return -np.sum(t * np.log(o), axis=-1)
+        o = np.clip(o , eps , 1 - eps)
+        return -np.sum(t * np.log(o) , axis = -1)
 
-    def dL_do(t, o):
+    def dL_do(t : np.ndarray , o : np.ndarray) -> np.ndarray :
         eps = 1e-9
-        o = np.clip(o, eps, 1 - eps)
+        o = np.clip(o , eps , 1 - eps)
         return -t / o
