@@ -154,8 +154,12 @@ class FFNN :
     
     def compute_delta_output_layer(self, t):
         if ((self.loss_function == CCE or self.loss_function == BCE) 
-                and self.activate_layer[-1] == Softmax):
-            self.delta.insert(0, self.out[-1][0] - t)
+                and self.activation_functions[-1] == Softmax):
+            self.delta.insert(0, (self.out[-1][0] - t).reshape(-1, 1))
+            # print(f'{t=}')
+            # o = self.out[-1][0]
+            # print(f'{o=}')
+            # print(f'out{self.delta=}')
             return
 
         o = self.out[-1][0]
@@ -163,7 +167,7 @@ class FFNN :
         # print(f'{o=}')
         dL_do = self.loss_function.dL_do(t, o)
         # print(f'{dL_do=}')
-        if self.activate_layer[-1] == Softmax:
+        if self.activation_functions[-1] == Softmax:
             J = Softmax.df_dx(o=o)
             dL_dnet = J.T @ dL_do
         else:
@@ -191,39 +195,6 @@ class FFNN :
 
         self.delta.insert(0, delta)
 
-    def update_weight(self, layer):
-        delta = self.delta[layer-1]
-        # print(f'{layer=}')
-        # print(f'{delta=}')
-        # print(f'{self.out=}')
-        a_prev = np.hstack([[1], self.out[layer-1][0]])
-        # print(f'{a_prev=}')
-
-        grad = np.outer(delta, a_prev)
-        # print(f'{grad=}')
-        # print(f'{self.weights[layer-1]=}')
-        self.gradients[layer-1] = grad
-
-        if self.l1_lambda is None and self.l2_lambda is None:
-            self.weights[layer-1] -= self.learning_rate * grad
-            return
-
-        if self.l1_lambda is None:
-            self.l1_lambda = 0
-        if self.l2_lambda is None:
-            self.l2_lambda = 0
-        l1_term = self.l1_lambda * np.sign(self.weights[layer-1])
-        l2_term = 2 * self.l2_lambda * self.weights[layer-1]
-
-        l1_term[:, 0] = 0
-        l2_term[:, 0] = 0
-        self.weights[layer-1] -= self.learning_rate * (
-            grad + l1_term + l2_term
-
-        )
-
-        # print(f'{self.weights[layer-1]=}')
-
     def _plot_histogram(self, data_source, layeridx: list[int], title_prefix: str):
         for idx in layeridx:
             if 0 <= idx < len(data_source):
@@ -245,61 +216,88 @@ class FFNN :
     def count_validation_loss(self, validation_X, validation_y):
         copy = FFNN(self.dimension, self.activation_functions, self.loss_function,
                     weight_initialization='zero')
-        copy.weights = self.weights
+        copy.weights = [w.copy() for w in self.weights]
         copy.predict(validation_X)
         result = copy.result()
         loss = np.sum(copy.loss_function.L(validation_y, result))
         self.validation_loss.append(loss)
 
-    def train(self, X, y, epochs, verbose=False, output_file=None, validation_X= [], validation_y= []):
+    def compute_gradient(self, layer):
+        delta = self.delta[layer - 1]
+        a_prev = np.hstack([[1], self.out[layer - 1][0]])
+        self.gradients[layer - 1] += np.outer(delta, a_prev)
+
+    def apply_gradient(self, layer, grad):
+        if self.l1_lambda is None and self.l2_lambda is None:
+            self.weights[layer - 1] -= self.learning_rate * grad
+            return
+        l1 = (self.l1_lambda or 0) * np.sign(self.weights[layer - 1])
+        l2 = 2 * (self.l2_lambda or 0) * self.weights[layer - 1]
+        l1[:, 0] = 0
+        l2[:, 0] = 0
+        self.weights[layer - 1] -= self.learning_rate * (grad + l1 + l2)
+
+    def train(self, X, y, epochs, batch_size=1, verbose=False, output_file=None, validation_X=[], validation_y=[]):
         n_samples = X.shape[0]
-        print_freq = max(1, epochs // 100) 
+        batch_size = n_samples if batch_size is None else batch_size
         from tqdm import tqdm
 
         pbar = tqdm(range(epochs), desc="Training")
+        # pbar = range(epochs)
         self.training_loss = []
         self.validation_loss = []
 
         for epoch in pbar:
             loss = 0
-            for i in range(n_samples):
+            idx = np.random.permutation(n_samples)
+            X, y = X[idx], y[idx]
+            last_layer = len(self.weights)
 
-                x = X[i:i+1]
-                t = y[i:i+1]
+            for start in range(0, n_samples, batch_size):
+                X_batch = X[start:start + batch_size]
+                y_batch = y[start:start + batch_size]
 
-                self.delta = []
+                for layer in range(1, last_layer + 1):
+                    self.gradients[layer - 1] = np.zeros_like(self.weights[layer - 1])
 
-                self.predict(x)
-                loss += np.sum(self.loss_function.L(t, self.out[-1][0]))
+                for i in range(len(X_batch)):
+                    x = X_batch[i:i+1]
+                    t = y_batch[i:i+1]
 
-                self.compute_delta_output_layer(t)
+                    self.delta = []
+                    self.predict(x)
+                    loss += np.sum(self.loss_function.L(t, self.out[-1][0]))
 
-                last_layer = len(self.weights)
+                    self.compute_delta_output_layer(t)
+                    for layer in reversed(range(1, last_layer)):
+                        self.compute_delta_hidden_layer(layer)
+                    for layer in range(1, last_layer + 1):
+                        self.compute_gradient(layer)
 
-                for layer in reversed(range(1, last_layer)):
-                    self.compute_delta_hidden_layer(layer)
-                # print(f'{self.delta=}')
-                for layer in range(1, last_layer+1):
-                    self.update_weight(layer)
+                for layer in range(1, last_layer + 1):
+                    self.apply_gradient(layer, self.gradients[layer - 1] / len(X_batch))
+
+            self.training_loss.append(loss)
             if verbose:
                 pbar.set_postfix(loss=f"{loss:.6f}")
-                self.count_validation_loss(validation_X, validation_y)
-                self.training_loss.append(loss)
+                if len(validation_X) > 0:
+                    self.count_validation_loss(validation_X, validation_y)
 
             if output_file is not None:
-                output_file.write(f"{epoch+1},{loss[0][0]:.6f}\n")
+                output_file.write(f"{epoch+1},{loss:.6f}\n")
                 output_file.flush()
 
 if __name__ == '__main__':
-    a = FFNN([3,1,1,1], [Tanh, Sigmoid, Sigmoid, Sigmoid, ], BCE, 0.1, l1_lambda=0., l2_lambda=0.01)
-    a.train(np.array([[1,2,3],[-4,-5,-6],[7,8,9]]), np.array([[1],[0],[1]]), 100, verbose=True,
-            validation_X=[[1,2,3],[-4,-5,-6],[7,8,9]], validation_y=[[1],[0],[1]])
+    a = FFNN([3,3,3,3], [Tanh, Sigmoid, Softmax], CCE, 0.1, l1_lambda=0., l2_lambda=0.0)
+    a.train(np.array([[1,1,1],[-1,-1,-1],[2,-2,2]]), np.array([[1, 0, 0],[0, 1, 0],[0, 0, 1]]), 1, verbose=True,
+            validation_X=[[1,1,1],[-1,-1,-1],[2,-2,2]], validation_y=[[1, 0, 0],[0, 1, 0],[0,0,1]], batch_size=3)
     print(a.weights)
-    a.predict([[1,2,3],[-4,-5,-6],[7,8,9]])
+    a.predict([[1,1,1],[-1,-1,-1],[2,-2,2]])
     print(a.result())
-    print(MSE.L(np.array([[1],[0],[1]]), a.result()))
-    for net, o in zip(a.net, a.out):
-        print(net)
-        print(o)
-    print(a.validation_loss)
-    print(a.training_loss)
+    print(CCE.L(np.array([[1, 0, 0],[0, 1, 0],[0,0,1]]), a.result()))
+    for net in a.net:
+        print(f"{net=}")
+    for o in a.out:
+        print(f"{o=}")
+    # print(a.validation_loss)
+    # print(a.training_loss)

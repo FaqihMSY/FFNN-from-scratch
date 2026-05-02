@@ -86,7 +86,7 @@ class Tanh :
 class Softmax:
     def f(x: np.ndarray) -> np.ndarray:
         e = np.exp(x - np.max(x))
-        return e / np.sum(e)
+        return e / np.sum(e, 1).reshape(-1, 1)
 
     def df_dx(x: np.ndarray = None, o: np.ndarray = None) -> np.ndarray:
         if x is None and o is None:
