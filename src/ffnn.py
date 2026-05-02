@@ -153,12 +153,21 @@ class FFNN :
         return self.out[-1]
     
     def compute_delta_output_layer(self, t):
+        if ((self.loss_function == CCE or self.loss_function == BCE) 
+                and self.activate_layer[-1] == Softmax):
+            self.delta.insert(0, self.out[-1][0] - t)
+            return
+
         o = self.out[-1][0]
         # print(f'{t=}')
         # print(f'{o=}')
         dL_do = self.loss_function.dL_do(t, o)
         # print(f'{dL_do=}')
-        dL_dnet = self.activation_functions[-1].df_dx(o) * dL_do
+        if self.activate_layer[-1] == Softmax:
+            J = Softmax.df_dx(o=o)
+            dL_dnet = J.T @ dL_do
+        else:
+            dL_dnet = self.activation_functions[-1].df_dx(o=o) * dL_do
         # print(f'{dL_dnet=}')
         self.delta.insert(0, dL_dnet)
 
@@ -175,7 +184,7 @@ class FFNN :
 
         dnet = w_next.T @ delta_next
         # print(f'{dnet=}')
-        do_dnet = self.activation_functions[layer-1].df_dx(o)  
+        do_dnet = self.activation_functions[layer-1].df_dx(o=o)  
         # print(f'{do_dnet=}')
         delta = do_dnet[:, np.newaxis] * dnet
         # print(f'{delta=}')
