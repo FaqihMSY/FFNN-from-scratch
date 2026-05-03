@@ -21,6 +21,8 @@
 import numpy as np
 from .functions import *
 import matplotlib.pyplot as plt
+import logging
+logging.basicConfig(level=logging.INFO)
 
 class FFNN :
     # DESKRIPSI LOKAL
@@ -155,43 +157,43 @@ class FFNN :
     def compute_delta_output_layer(self, t):
         if ((self.loss_function == CCE or self.loss_function == BCE) 
                 and self.activation_functions[-1] == Softmax):
-            self.delta.insert(0, (self.out[-1][0] - t).reshape(-1, 1))
-            # print(f'{t=}')
-            # o = self.out[-1][0]
-            # print(f'{o=}')
-            # print(f'out{self.delta=}')
+            self.delta.insert(0, (self.out[-1] - t).T)
+            logging.debug(f'{t=}')
+            o = self.out[-1]
+            logging.debug(f'{o=}')
+            logging.debug(f'out{self.delta=}')
             return
 
-        o = self.out[-1][0]
-        # print(f'{t=}')
-        # print(f'{o=}')
+        o = self.out[-1]
+        logging.debug(f'{t=}')
+        logging.debug(f'{o=}')
         dL_do = self.loss_function.dL_do(t, o)
-        # print(f'{dL_do=}')
+        logging.debug(f'{dL_do=}')
         if self.activation_functions[-1] == Softmax:
             J = Softmax.df_dx(o=o)
             dL_dnet = J.T @ dL_do
         else:
             dL_dnet = self.activation_functions[-1].df_dx(o=o) * dL_do
-        # print(f'{dL_dnet=}')
+        logging.debug(f'{dL_dnet=}')
         self.delta.insert(0, dL_dnet)
 
     def compute_delta_hidden_layer(self, layer):
-        o = self.out[layer][0]
+        o = self.out[layer]
         delta_next = self.delta[0]
         w_next = self.weights[layer][:, 1:]
-        # print(f'comhid_{layer=}')
-        # print(f'{o=}')
-        # print(f'{self.weights=}')
-        # print(f'{w_next=}')
-        # print(f'{delta_next=}')
+        logging.debug(f'comhid_{layer=}')
+        logging.debug(f'{o=}')
+        logging.debug(f'{self.weights=}')
+        logging.debug(f'{w_next=}')
+        logging.debug(f'{delta_next=}')
 
 
         dnet = w_next.T @ delta_next
-        # print(f'{dnet=}')
+        logging.debug(f'{dnet=}')
         do_dnet = self.activation_functions[layer-1].df_dx(o=o)  
-        # print(f'{do_dnet=}')
-        delta = do_dnet[:, np.newaxis] * dnet
-        # print(f'{delta=}')
+        logging.debug(f'{do_dnet=}')
+        delta = np.atleast_2d(do_dnet).T * dnet
+        logging.debug(f'{delta=}')
 
         self.delta.insert(0, delta)
 
@@ -224,8 +226,17 @@ class FFNN :
 
     def compute_gradient(self, layer):
         delta = self.delta[layer - 1]
-        a_prev = np.hstack([[1], self.out[layer - 1][0]])
-        self.gradients[layer - 1] += np.outer(delta, a_prev)
+        a_prev = np.hstack(
+            (
+                np.ones( (len(self.out[layer-1]), 1) ),
+                self.out[layer - 1]
+            )
+        )
+        logging.debug(f'compute delta layer {layer}')
+        logging.debug(f'compute {delta=}')
+        logging.debug(f'compute {a_prev=}')
+        logging.debug(f'compute outer {delta @ a_prev}')
+        self.gradients[layer - 1] += delta @ a_prev
 
     def apply_gradient(self, layer, grad):
         if self.l1_lambda is None and self.l2_lambda is None:
@@ -260,26 +271,23 @@ class FFNN :
                 for layer in range(1, last_layer + 1):
                     self.gradients[layer - 1] = np.zeros_like(self.weights[layer - 1])
 
-                for i in range(len(X_batch)):
-                    x = X_batch[i:i+1]
-                    t = y_batch[i:i+1]
+                self.delta = []
+                self.predict(X_batch)
+                loss += np.sum(self.loss_function.L(y_batch, self.out[-1][0]))
 
-                    self.delta = []
-                    self.predict(x)
-                    loss += np.sum(self.loss_function.L(t, self.out[-1][0]))
-
-                    self.compute_delta_output_layer(t)
-                    for layer in reversed(range(1, last_layer)):
-                        self.compute_delta_hidden_layer(layer)
-                    for layer in range(1, last_layer + 1):
-                        self.compute_gradient(layer)
+                self.compute_delta_output_layer(y_batch)
+                for layer in reversed(range(1, last_layer)):
+                    self.compute_delta_hidden_layer(layer)
+                for layer in range(1, last_layer + 1):
+                    self.compute_gradient(layer)
 
                 for layer in range(1, last_layer + 1):
                     self.apply_gradient(layer, self.gradients[layer - 1] / len(X_batch))
 
             self.training_loss.append(loss)
+            pbar.set_postfix(loss=f"{loss:.6f}")
             if verbose:
-                pbar.set_postfix(loss=f"{loss:.6f}")
+                logging.info(f"{loss:.6f}")
                 if len(validation_X) > 0:
                     self.count_validation_loss(validation_X, validation_y)
 
