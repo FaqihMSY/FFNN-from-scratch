@@ -295,10 +295,47 @@ class FFNN :
                 output_file.write(f"{epoch+1},{loss:.6f}\n")
                 output_file.flush()
 
+    def save(self, path):
+        arrays = {f'w_{i}': w for i, w in enumerate(self.weights)}
+        arrays['learning_rate'] = np.array(self.learning_rate)
+        arrays['l1_lambda']     = np.array(self.l1_lambda or 0)
+        arrays['l2_lambda']     = np.array(self.l2_lambda or 0)
+        arrays['dimension']     = np.array(self.dimension)
+        arrays['activations']   = np.array([fn.__name__ for fn in self.activation_functions])
+        arrays['loss']          = np.array(self.loss_function.__name__)
+
+        np.savez(path, **arrays)
+
+    def load(self, path):
+        data = np.load(path)
+        self.learning_rate = float(data['learning_rate'])
+        self.l1_lambda     = float(data['l1_lambda'])
+        self.l2_lambda     = float(data['l2_lambda'])
+        self.dimension     = list(data['dimension'])
+        self.weights       = [data[f'w_{i}'] for i in range(len(self.weights))]
+        self.activation_functions  = [ACTIVATION_MAP[name] for name in data['activations']]
+        self.loss          = LOSS_MAP[str(data['loss'])]
+
+    @classmethod
+    def from_file(cls, path):
+        data = np.load(path)
+        learning_rate = float(data['learning_rate'])
+        l1_lambda     = float(data['l1_lambda'])
+        l2_lambda     = float(data['l2_lambda'])
+        dimension     = list(data['dimension'])
+        activation_functions  = [ACTIVATION_MAP[name] for name in data['activations']]
+        loss          = LOSS_MAP[str(data['loss'])]
+        model = FFNN(
+            dimension, activation_functions, loss, learning_rate, l1_lambda, l2_lambda
+        )
+        model.weights = [data[f'w_{i}'] for i in range(len(self.weights))]
+
+        return model
+
 if __name__ == '__main__':
-    a = FFNN([3,3,3,3], [Tanh, Sigmoid, Softmax], CCE, 0.1, l1_lambda=0., l2_lambda=0.0)
-    a.train(np.array([[1,1,1],[-1,-1,-1],[2,-2,2]]), np.array([[1, 0, 0],[0, 1, 0],[0, 0, 1]]), 1, verbose=True,
-            validation_X=[[1,1,1],[-1,-1,-1],[2,-2,2]], validation_y=[[1, 0, 0],[0, 1, 0],[0,0,1]], batch_size=3)
+    a = FFNN([3,3,3,3], [Sigmoid, Sigmoid, Sigmoid], MSE, 0.1, l1_lambda=0., l2_lambda=0.0)
+    a.train(np.array([[1,1,1],[-1,-1,-1],[2,-2,2]]), np.array([[1, 0, 0],[0, 1, 0],[0, 0, 1]]), 100, verbose=False,
+            validation_X=[[1,1,1],[-1,-1,-1],[2,-2,2]], validation_y=[[1, 0, 0],[0, 1, 0],[0,0,1]], batch_size=5)
     print(a.weights)
     a.predict([[1,1,1],[-1,-1,-1],[2,-2,2]])
     print(a.result())
@@ -307,5 +344,7 @@ if __name__ == '__main__':
         print(f"{net=}")
     for o in a.out:
         print(f"{o=}")
+    a.save('test.npz')
+    a.load('test.npz')
     # print(a.validation_loss)
     # print(a.training_loss)

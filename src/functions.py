@@ -19,7 +19,6 @@
 
 # ALGORITMA
 import numpy as np
-
 class Linear :
     def f(x : np.ndarray) -> np.ndarray :
         return x
@@ -131,3 +130,18 @@ class CCE :
         eps = 1e-9
         o = np.clip(o , eps , 1 - eps)
         return -t / o
+
+ACTIVATION_MAP = {
+    'Linear':  Linear,
+    'ReLU':    ReLU,
+    'Sigmoid': Sigmoid,
+    'Tanh':    Tanh,
+    'Softmax': Softmax,
+}
+
+LOSS_MAP = {
+    'MSE': MSE,
+    'CCE': CCE,
+    'BCE': BCE,
+}
+
